@@ -135,12 +135,12 @@ int main(int argc, char** argv) {
                 d, s, p, inputloc, outputloc);
     #endif
 
-    if(strlen(inputloc) > 0 && (i = fopen(inputloc, "r")) == NULL) {
+    if(strlen(inputloc) && (i = fopen(inputloc, "r")) == NULL) {
         perror(inputloc);
         exit = EXIT_FAILURE;
         goto end_program; // free all allocated memory before exiting
     }    
-    if(strlen(outputloc) > 0 && (o = fopen(outputloc, "r")) == NULL) {
+    if(strlen(outputloc) && (o = fopen(outputloc, "r")) == NULL) {
         perror(outputloc);
         exit = EXIT_FAILURE;
         goto end_program; // free all allocated memory before exiting
@@ -149,10 +149,14 @@ int main(int argc, char** argv) {
     
     
     end_program:
-    free(inputloc);
-    free(outputloc);
-    protected_free(i);
-    protected_free(o);
+    if(strlen(inputloc)) {
+        free(inputloc);
+        fclose(i);
+    }
+    if(strlen(outputloc)) {
+        free(outputloc);
+        fclose(o);
+    }
     return exit;
 }
 
