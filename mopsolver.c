@@ -9,15 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#define WALL_INPUT "1" /// input character representing a wall
-#define PATH_INPUT "0" /// input character representing a path
-
-#define WALL_DISP "#" /// character representing a wall when printed to output
-#define PATH_DISP "." /// character representing a path when printed to output
-
-#define BOUND_TOP "-" /// character representing the top/bottom of the map
-#define BOUND_SIDE "|" /// character representing the sides of the map
+#include "maze.h"
 
 #define VALID_FLAGS "hdspi:o:" /// flags respected by this program
 #define ARG_COUNT 6 /// amount of flags respected by this program
