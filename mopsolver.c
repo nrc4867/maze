@@ -84,8 +84,8 @@ int main(int argc, char** argv) {
     
     // input and output locations should only be changed after
     // all arguments are read, protects against multiple uses of -i/-o
-    char *inputloc = ""; 
-    char *outputloc = ""; 
+    char *inputloc = NULL;
+    char *outputloc = NULL; 
     
     int exit = EXIT_SUCCESS; // exit code
 
@@ -108,9 +108,11 @@ int main(int argc, char** argv) {
                 p = 1;
                 break;
             case 'i':
+                protected_free(inputloc);
                 inputloc = strdup(optarg);
                 break;
             case 'o':
+                protected_free(outputloc);
                 outputloc = strdup(optarg);
                 break;
             case '?': // Argument not found
@@ -127,25 +129,27 @@ int main(int argc, char** argv) {
                 d, s, p, inputloc, outputloc);
     #endif
 
-    if(strlen(inputloc) && (i = fopen(inputloc, "r")) == NULL) {
+    if(inputloc != NULL && (i = fopen(inputloc, "r")) == NULL) {
         perror(inputloc);
         exit = EXIT_FAILURE;
         goto end_program; // free all allocated memory before exiting
     }    
-    if(strlen(outputloc) && (o = fopen(outputloc, "r")) == NULL) {
+    if(outputloc != NULL && (o = fopen(outputloc, "w")) == NULL) {
         perror(outputloc);
         exit = EXIT_FAILURE;
         goto end_program; // free all allocated memory before exiting
     }
     
-    
-    
+    Maze* maze = create_maze(i);
+    pretty_print_maze(o, maze);
+    clean_maze(maze);
+
     end_program:
-    if(strlen(inputloc)) {
+    if(inputloc != NULL) {
         free(inputloc);
         fclose(i);
     }
-    if(strlen(outputloc)) {
+    if(outputloc != NULL) {
         free(outputloc);
         fclose(o);
     }
