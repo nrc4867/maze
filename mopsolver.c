@@ -140,7 +140,9 @@ int main(int argc, char** argv) {
         goto end_program; // free all allocated memory before exiting
     }
     
-    Maze* maze = create_maze(i);
+    Maze maze = create_maze(i);
+    pretty_print_maze(o, maze);
+    solve_maze(maze);
     pretty_print_maze(o, maze);
     clean_maze(maze);
 
