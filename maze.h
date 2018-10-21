@@ -6,12 +6,12 @@
 #ifndef MAZE
 #define MAZE
 
-#define WALL_DISP "#" /// character representing a wall when printed to output
-#define PATH_DISP "." /// character representing a path when printed to output
-#define VALID_PATH "+" /// character representing the found path
+#define WALL_DISP '#' /// character representing a wall when printed to output
+#define PATH_DISP '.' /// character representing a path when printed to output
+#define VALID_PATH '+' /// character representing the found path
 
-#define BOUND_TOP "-" /// character representing the top/bottom of the maze
-#define BOUND_SIDE "|" /// character representing the sides of the maze
+#define BOUND_TOP '-' /// character representing the top/bottom of the maze
+#define BOUND_SIDE '|' /// character representing the sides of the maze
 
 /// represent a maze
 typedef struct MAZE_ST* Maze;
@@ -33,7 +33,7 @@ Maze create_maze(FILE* input);
  *      maze -  pointer to maze structure to print
  *      output - output stream to print the maze to
  */
-void pretty_print_maze(FILE* output, const Maze maze);
+void pretty_print_maze(const Maze maze, FILE* output);
 
 /**
  * solve_maze()
