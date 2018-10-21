@@ -8,8 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-
 #include <string.h>
+#include "queueADT.h"
 
 struct MAZE_ST {
     int** data;
@@ -102,4 +102,89 @@ void pretty_print_maze(const Maze maze, FILE* output) {
         fprintf(output, "%c\n", (row+1 == maze->height)?' ':BOUND_SIDE);
     }
     print_horizontal_bound(output, maze->width);
+}
+
+// Acting as backpointer
+typedef struct MAZE_TRAVELER_ST {
+    int to_visit[2];
+    struct MAZE_TRAVELER_ST* prev;
+    
+} Traveler;
+
+static Traveler* create_traveler(int to_visit[2], Traveler* prev) {
+    Traveler* traveler = malloc(sizeof(Traveler));
+    traveler->to_visit[0] = to_visit[0];
+    traveler->to_visit[1] = to_visit[1];
+    traveler->prev = prev;
+    return traveler;
+}
+
+static void enqueue_neighbors(Queue next, Queue visited, Traveler* curr) {
+    queue_enqueue(next, curr);
+    queue_enqueue(visited, curr);
+}
+
+static void create_neighbors(Queue next, Queue visited, 
+                Maze maze, Traveler* curr) {
+    // mark this spot as -1 to signifiy that
+    // we have traveled to this point already
+    maze->data[curr->to_visit[0]][curr->to_visit[1]] = -1;
+    // enqueue sorrounding paths
+    for(int row = -1; row < 2; row++) {
+        for(int col = -1; col < 2; col++) {
+            if(row == col || row == -col) continue;
+            int newpoint[] = {curr->to_visit[0] + row,
+                                 curr->to_visit[1] + col};
+            if(newpoint[0] < maze->height && 
+                    newpoint[0] >= 0 &&
+                    newpoint[1] < maze->width &&
+                    newpoint[1] >= 0 && 
+                    maze->data[newpoint[0]][newpoint[1]] == 0)
+                enqueue_neighbors(next, visited, 
+                    create_traveler(newpoint, curr));
+        }
+    }
+
+}
+
+int solve_maze(Maze maze) {
+    Queue next = queue_create(); // queue of nodes we have to got to
+    Queue visited = queue_create(); // queue of nodes we have been to
+    // Create the startpoint for the maze
+    int startpoint[] = {0,0};
+    enqueue_neighbors(next, visited, create_traveler(startpoint, NULL));
+    
+    // we want to exit this loop if there is nowhere left
+    // to travel or we found the exit
+    int foundExit = 0;
+    Traveler* curr = NULL; 
+    while(!queue_empty(next) && !foundExit) {
+        curr = (Traveler*)queue_dequeue(next);
+        // we only want to look at points that have not been
+        // visited or are not walls
+        if(!maze->data[curr->to_visit[0]][curr->to_visit[1]]) {
+            if(curr->to_visit[0]+1 == maze->height && 
+                curr->to_visit[1]+1 == maze->width) {
+                foundExit = 1;
+            } else {
+                create_neighbors(next, visited, maze, curr);
+            }   
+        }
+    }
+    
+    // if the exit to the maze has been found then 
+    // we want to use the backpoints to mark the path
+    // we start at depth 2 rather then 1 to differenciate
+    // the path from the walls
+    for(int depth = 2; foundExit && curr != NULL; depth++) {
+        maze->data[curr->to_visit[0]][curr->to_visit[1]] = depth;
+        curr = curr->prev;
+    }
+
+    while(!queue_empty(visited)) // clear all traversal structs
+        free(queue_dequeue(visited));
+    queue_destroy(visited);
+    queue_destroy(next);
+
+    return maze->data[0][0] - 1; // -1 account for wall
 }
