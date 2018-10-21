@@ -29,10 +29,10 @@ struct MAZE_ST {
  */
 static void add_row(Maze maze, char* line) {  
     if(maze->data == NULL) { // allocate new maze
-        maze->data = (int**) malloc(sizeof(int*));
+        maze->data = (int**) malloc(sizeof(int* ));
     } else { // make room for another row in the maze
         maze->data = (int**) realloc(maze->data, 
-                                sizeof(int*) * maze->height + 1);
+                                sizeof(int* ) * (maze->height + 1));
     }
     assert(maze->data != NULL);
     // get the length of data for the line
@@ -43,11 +43,11 @@ static void add_row(Maze maze, char* line) {
     }
     // set data for the current row
     maze->width = width;
-    maze->data[maze->height] = malloc(sizeof(int) * width);
+    maze->data[maze->height] = malloc(sizeof(int *) * width);
     assert(maze->data[maze->height] != NULL);
     for(int linepos = 0, rowpos = 0; rowpos < maze->width;
                  linepos +=2, rowpos++) {
-        maze->data[maze->height][rowpos] = strtol(line+linepos, NULL, 10);
+        maze->data[maze->height][rowpos] = (int)strtol(line+linepos, NULL, 10);
     }
     maze->height++;
 }
@@ -65,13 +65,14 @@ Maze create_maze(FILE* input) {
     maze->width = maze->height = 0;
     maze->data = NULL;
     
-    char* buff;
+    char* buff = NULL;
     size_t len;
     
     while(getline(&buff, &len, input) > 0) {
         add_row(maze, buff);
     }
-    
+    free(buff);
+
     return maze;
 }
 
