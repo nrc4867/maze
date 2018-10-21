@@ -77,6 +77,7 @@ void queue_enqueue(Queue queue, void* data) {
    if(queue->front == NULL) { // Queue is empty
         queue->front = queue->back = malloc(sizeof(Qlinked));
         assert(queue->front != NULL);
+        queue->front->value = queue->front->next = NULL;
     } else {
         queue->back->next = malloc(sizeof(Qlinked));
         assert(queue->back->next != NULL);
