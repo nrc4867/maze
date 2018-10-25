@@ -113,28 +113,25 @@ void pretty_print_maze(const Maze maze, FILE* output) {
 // Acting as backpointer
 typedef struct MAZE_TRAVELER_ST {
     int to_visit[2];
+    int distance;
     struct MAZE_TRAVELER_ST* prev;
     
 } Traveler;
 
-static Traveler* create_traveler(int to_visit[2], Traveler* prev) {
+static Traveler* create_traveler(int to_visit[2], int distance, Traveler* prev) {
     Traveler* traveler = malloc(sizeof(Traveler));
     traveler->to_visit[0] = to_visit[0];
     traveler->to_visit[1] = to_visit[1];
+    traveler->distance = distance;
     traveler->prev = prev;
     return traveler;
 }
 
-static void enqueue_neighbors(Queue next, Queue visited, Traveler* curr) {
-    queue_enqueue(next, curr);
-    queue_enqueue(visited, curr);
-}
-
-static void create_neighbors(Queue next, Queue visited, 
+static void create_neighbors(Queue next,
                 Maze maze, Traveler* curr) {
     // mark this spot as -1 to signifiy that
     // we have traveled to this point already
-    maze->data[curr->to_visit[0]][curr->to_visit[1]] = -1;
+    maze->data[curr->to_visit[0]][curr->to_visit[1]] = curr->distance;
     // enqueue sorrounding paths
     for(int col = -1; col < 2; col++) {   
         for(int row = -1; row < 2; row++) {
@@ -146,8 +143,8 @@ static void create_neighbors(Queue next, Queue visited,
                     newpoint[1] < maze->width &&
                     newpoint[1] >= 0 && 
                     maze->data[newpoint[0]][newpoint[1]] == 0)
-                enqueue_neighbors(next, visited, 
-                    create_traveler(newpoint, curr));
+                queue_enqueue(next, 
+                    create_traveler(newpoint, curr->distance + 1, curr));
         }
     }
 
@@ -155,10 +152,10 @@ static void create_neighbors(Queue next, Queue visited,
 
 int solve_maze(Maze maze) {
     Queue next = queue_create(); // queue of nodes we have to got to
-    Queue visited = queue_create(); // queue of nodes we have been to
+    // Queue visited = queue_create(); // queue of nodes we have been to
     // Create the startpoint for the maze
     int startpoint[] = {0,0};
-    enqueue_neighbors(next, visited, create_traveler(startpoint, NULL));
+    queue_enqueue(next, create_traveler(startpoint, 2, NULL));
     
     // we want to exit this loop if there is nowhere left
     // to travel or we found the exit
@@ -171,26 +168,18 @@ int solve_maze(Maze maze) {
         if(!maze->data[curr->to_visit[0]][curr->to_visit[1]]) {
             if(curr->to_visit[0]+1 == maze->height && 
                 curr->to_visit[1]+1 == maze->width) {
+                maze->data[maze->height -1][maze->width -1]  = curr->distance;
                 foundExit = 1;
             } else {
-                create_neighbors(next, visited, maze, curr);
+                create_neighbors(next, maze, curr);
             }   
         }
-    }
-    
-    // if the exit to the maze has been found then 
-    // we want to use the backpoints to mark the path
-    // we start at depth 2 rather then 1 to differenciate
-    // the path from the walls
-    for(int depth = 2; foundExit && curr != NULL; depth++) {
-        maze->data[curr->to_visit[0]][curr->to_visit[1]] = depth;
-        curr = curr->prev;
+        free(curr);
     }
 
-    while(!queue_empty(visited)) // clear all traversal structs
-        free(queue_dequeue(visited));
-    queue_destroy(visited);
+    while(!queue_empty(next)) // clear all traversal structs
+        free(queue_dequeue(next));
     queue_destroy(next);
 
-    return maze->data[0][0] - 1; // -1 account for wall
+    return maze->data[maze->height -1][maze->width -1] -1;  
 }
