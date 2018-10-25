@@ -36,7 +36,7 @@ static void add_row(Maze maze, char* line) {
     }
     assert(maze->data != NULL);
     // get the length of data for the line
-    int width = strlen(line) - strlen(line) / 2;
+    int width = strlen(line) - 1 - (strlen(line) - 1) / 2;
     if(maze->width && maze->width != width) {
         fprintf(stderr, "All rows in the maze must have equal widths.");
         exit(EXIT_FAILURE);
@@ -97,7 +97,13 @@ void pretty_print_maze(const Maze maze, FILE* output) {
     for(int row = 0; row < maze->height; row++) {
         fprintf(output, "%c ", (!row)?' ':BOUND_SIDE);
         for(int column = 0; column < maze->width; column++) {
+            #ifdef DEBUG
             fprintf(output, "%i ", maze->data[row][column]);
+            #else
+            fprintf(output, "%c ", 
+                (maze->data[row][column] == 1)?WALL_DISP:
+                (maze->data[row][column] > 1)?VALID_PATH:PATH_DISP);
+            #endif
         }
         fprintf(output, "%c\n", (row+1 == maze->height)?' ':BOUND_SIDE);
     }
@@ -130,8 +136,8 @@ static void create_neighbors(Queue next, Queue visited,
     // we have traveled to this point already
     maze->data[curr->to_visit[0]][curr->to_visit[1]] = -1;
     // enqueue sorrounding paths
-    for(int row = -1; row < 2; row++) {
-        for(int col = -1; col < 2; col++) {
+    for(int col = -1; col < 2; col++) {   
+        for(int row = -1; row < 2; row++) {
             if(row == col || row == -col) continue;
             int newpoint[] = {curr->to_visit[0] + row,
                                  curr->to_visit[1] + col};
