@@ -22,7 +22,7 @@ struct MAZE_ST {
 
 #define COORDS(y, x) (y*maze->width+x)
 #define ABOVE(index) (index - maze->width)
-#define BELOW(index) ((index + maze->width < maze->width*maze->height - 1) \
+#define BELOW(index) ((index + maze->width < maze->width*maze->height) \
                             ?index+maze->width:-1)
 #define LEFT(index) ((index%maze->width)?index-1:-1)
 #define RIGHT(index) ((index%maze->width != maze->width - 1)?index+1:-1)
