@@ -39,14 +39,33 @@ Maze create_maze(FILE* input) {
     Maze maze = (Maze)malloc(sizeof(struct MAZE_ST));
     assert(maze != NULL);
 
-    maze->width = maze->height = 0;
+    maze->width = maze->height = 0;    
     
-    fseek(input, 0, SEEK_END);
-    long size = ftell(input);
-    fseek(input, 0, SEEK_SET);
-    char* wholeMaze = malloc(size + 1);
-    fread(wholeMaze, size, 1, input);
-    
+    //if(input == stdin)
+    //getdelim(NULL, NULL, 0, input);
+    char* wholeMaze = NULL;    
+    long size = 0;
+
+    if(!fseek(input, 0, SEEK_END)) { // file provided
+        size = ftell(input);
+        fseek(input, 0, SEEK_SET);
+        wholeMaze = malloc(size + 1);
+        fread(wholeMaze, size, 1, input);
+    } else { // maze from cmd line
+        char* buff = NULL;
+        size_t len = 0;
+        while(getline(&buff, &len, stdin) >= 0) { 
+            if(wholeMaze == NULL)
+                wholeMaze = calloc(strlen(buff) + 1, sizeof(char));
+            else
+                wholeMaze = realloc(wholeMaze, 
+                    sizeof(char) * (strlen(wholeMaze) + strlen(buff) + 1));
+            strcat(wholeMaze, buff);
+        }
+        size = strlen(wholeMaze);
+        free(buff);
+    }
+
     maze->width = (int)strspn(wholeMaze, " 10");
     if(maze->width % 2) maze->width++;
     maze->height = size / maze->width;
