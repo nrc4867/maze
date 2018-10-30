@@ -20,8 +20,6 @@
 #define INPUT_STREAM stdin /// default value for -i
 #define OUTPUT_STREAM stdout /// default value for -o
 
-#define STEPS_OUTPUT "Solution in %i steps" //
-
 /**
  * protected_free()
  *      checks that a pointer is allocated prior to freeing
@@ -40,33 +38,24 @@ void protected_free(void* pointer) {
  *      stream - location to print the usage information
  */
 void usage_message(FILE* stream) {
-    fprintf(stream, "USAGE:\nmopsolver [-hdsp] [-i INFILE] [-o OUTFILE]");
+    fprintf(stream, "USAGE:\nmopsolver [-hdsp] [-i INFILE] [-o OUTFILE]\n");
 }
 
 /**
  * help_message()
  *      prints the help message for flag -h
  */
-void help_message() {
-    char *messages[ARG_COUNT] = {
-        "Print this helpful message to stdout and exit.", // -h
-        "Pretty print (display) the maze after reading.", // -d
-        "Print shortest solution steps.",                 // -s
-        "Read maze from INFILE.",                         // -i
-        "Print an optimal path.",                         // -p
-        "Write all output to OUTFILE."                    // -o
-    };
-
-    char *defaults[ARG_COUNT] = {
-        "",             // -h
-        "off",          // -d
-        "off",          // -s
-        "off",          // -p
-        "stdio",        // -i
-        "stdout"        // -o
-    };
-    
+void help_message() { 
     printf("Options:\n");
+    printf("\t-h\tPrint this helpful message to stdout and exit.\n");
+    printf("\t-d\tPretty print (display) the maze "
+                "after reading.\t(Default: off)\n");
+    printf("\t-s\tPrint shorest solution steps."
+                "\t\t\t(Default: off)\n");
+    printf("\t-i INFILE\tRead maze from INFILE."
+                "\t\t\t(Default: stdin)\n");
+    printf("\t-o OUTFILE\tWrite all output to OUTFILE."
+                "\t\t(Default: stdout)\n");
 }
 
 /**
@@ -140,10 +129,19 @@ int main(int argc, char** argv) {
         goto end_program; // free all allocated memory before exiting
     }
     
-    Maze maze = create_maze(i);
-    pretty_print_maze(o, maze);
-    solve_maze(maze);
-    pretty_print_maze(o, maze);
+    Maze maze = create_maze(i); 
+    if(d)
+        pretty_print_maze(maze, o); 
+    int steps = 0;
+    if(s || p)
+         steps = solve_maze(maze);
+    if(s && steps > 0)
+        fprintf(o, "Solution in %i steps.\n", steps);
+    else if(s)
+        fprintf(o, "No solution.\n");
+    if(p)
+        pretty_print_maze(maze, o); 
+
     clean_maze(maze);
 
     end_program:
