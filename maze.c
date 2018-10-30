@@ -10,47 +10,22 @@
 #include <assert.h>
 #include <string.h>
 #include "queueADT.h"
+#include "stackADT.h"
 
 struct MAZE_ST {
-    int** data;
+    int* data;
     int width;
     int height;
 };
 
 #include "maze.h"
 
-/**
- * add_row()
- *      add a row to a maze
- * args - 
- *      maze -  the maze to add the row to
- *      line -  a string describing the next
- *              row in the maze
- */
-static void add_row(Maze maze, char* line) {  
-    if(maze->data == NULL) { // allocate new maze
-        maze->data = (int**) malloc(sizeof(int* ));
-    } else { // make room for another row in the maze
-        maze->data = (int**) realloc(maze->data, 
-                                sizeof(int* ) * (maze->height + 1));
-    }
-    assert(maze->data != NULL);
-    // get the length of data for the line
-    int width = strlen(line) - 1 - (strlen(line) - 1) / 2;
-    if(maze->width && maze->width != width) {
-        fprintf(stderr, "All rows in the maze must have equal widths.");
-        exit(EXIT_FAILURE);
-    }
-    // set data for the current row
-    maze->width = width;
-    maze->data[maze->height] = malloc(sizeof(int *) * width);
-    assert(maze->data[maze->height] != NULL);
-    for(int linepos = 0, rowpos = 0; rowpos < maze->width;
-                 linepos +=2, rowpos++) {
-        maze->data[maze->height][rowpos] = (int)strtol(line+linepos, NULL, 10);
-    }
-    maze->height++;
-}
+#define COORDS(y, x) (y*maze->width+x)
+#define ABOVE(index) (index - maze->width)
+#define BELOW(index) ((index + maze->width < maze->width*maze->height - 1) \
+                            ?index+maze->width:-1)
+#define LEFT(index) ((index%maze->width)?index-1:-1)
+#define RIGHT(index) ((index%maze->width != maze->width - 1)?index+1:-1)
 
 /**
  * create_maze()
@@ -63,23 +38,31 @@ Maze create_maze(FILE* input) {
     assert(maze != NULL);
 
     maze->width = maze->height = 0;
-    maze->data = NULL;
     
-    char* buff = NULL;
-    size_t len;
+    fseek(input, 0, SEEK_END);
+    long size = ftell(input);
+    fseek(input, 0, SEEK_SET);
+    char* wholeMaze = malloc(size + 1);
+    fread(wholeMaze, size, 1, input);
     
-    while(getline(&buff, &len, input) > 0) {
-        add_row(maze, buff);
-    }
-    free(buff);
-
+    maze->width = (int)strspn(wholeMaze, " 10");
+    if(maze->width % 2) maze->width++;
+    maze->height = size / maze->width;
+    maze->width /= 2;    
+    
+    maze->data = malloc(sizeof(int) * (maze->width * maze->height));
+    for(int i = 0, sp = 0; i < maze->width * maze->height; i++, sp += 2)
+        maze->data[i] = (int)strtol(wholeMaze + sp, NULL, 10);
+    free(wholeMaze);
+    #ifdef DEBUG
+    fprintf(stdout,  "%ld\n", size);
+    printf("w%i h%i\n", maze->width, maze->height);
+    #endif
     return maze;
 }
 
 void clean_maze(Maze maze) {
     if(maze == NULL) return;
-    for(int row = 0; row < maze->height; row++)
-        free(maze->data[row]);
     free(maze->data);
     free(maze);
 }
@@ -98,11 +81,11 @@ void pretty_print_maze(const Maze maze, FILE* output) {
         fprintf(output, "%c ", (!row)?' ':BOUND_SIDE);
         for(int column = 0; column < maze->width; column++) {
             #ifdef DEBUG
-            fprintf(output, "%i ", maze->data[row][column]);
+            fprintf(output, "%i ", maze->data[row*maze->width + column]);
             #else
             fprintf(output, "%c ", 
-                (maze->data[row][column] == 1)?WALL_DISP:
-                (maze->data[row][column] > 1)?VALID_PATH:PATH_DISP);
+                (maze->data[row*maze->width + column] == 1)?WALL_DISP:
+                (maze->data[row*maze->width + column] > 1)?VALID_PATH:PATH_DISP);
             #endif
         }
         fprintf(output, "%c\n", (row+1 == maze->height)?' ':BOUND_SIDE);
@@ -112,16 +95,14 @@ void pretty_print_maze(const Maze maze, FILE* output) {
 
 // Acting as backpointer
 typedef struct MAZE_TRAVELER_ST {
-    int to_visit[2];
+    int to_visit;
     int distance;
     struct MAZE_TRAVELER_ST* prev;
-    
 } Traveler;
 
-static Traveler* create_traveler(int to_visit[2], int distance, Traveler* prev) {
+static Traveler* create_traveler(int to_visit, int distance, Traveler* prev) {
     Traveler* traveler = malloc(sizeof(Traveler));
-    traveler->to_visit[0] = to_visit[0];
-    traveler->to_visit[1] = to_visit[1];
+    traveler->to_visit = to_visit;
     traveler->distance = distance;
     traveler->prev = prev;
     return traveler;
@@ -131,31 +112,29 @@ static void create_neighbors(Queue next,
                 Maze maze, Traveler* curr) {
     // mark this spot as -1 to signifiy that
     // we have traveled to this point already
-    maze->data[curr->to_visit[0]][curr->to_visit[1]] = curr->distance;
+    maze->data[curr->to_visit] = -1;
     // enqueue sorrounding paths
-    for(int col = -1; col < 2; col++) {   
-        for(int row = -1; row < 2; row++) {
-            if(row == col || row == -col) continue;
-            int newpoint[] = {curr->to_visit[0] + row,
-                                 curr->to_visit[1] + col};
-            if(newpoint[0] < maze->height && 
-                    newpoint[0] >= 0 &&
-                    newpoint[1] < maze->width &&
-                    newpoint[1] >= 0 && 
-                    maze->data[newpoint[0]][newpoint[1]] == 0)
-                queue_enqueue(next, 
-                    create_traveler(newpoint, curr->distance + 1, curr));
-        }
-    }
+    int index = curr->to_visit;
+    if(ABOVE(index) >= 0 && !maze->data[ABOVE(index)])
+        queue_enqueue(next, 
+            create_traveler(ABOVE(index), curr->distance + 1, curr));
+    if(BELOW(index) >= 0 && !maze->data[BELOW(index)])
+        queue_enqueue(next, 
+            create_traveler(BELOW(index), curr->distance + 1, curr));
+    if(LEFT(index) >= 0 && !maze->data[LEFT(index)])
+        queue_enqueue(next, 
+            create_traveler(LEFT(index), curr->distance + 1, curr));
+    if(RIGHT(index) >= 0 && !maze->data[RIGHT(index)])
+        queue_enqueue(next, 
+            create_traveler(RIGHT(index), curr->distance + 1, curr));
 
 }
 
 int solve_maze(Maze maze) {
     Queue next = queue_create(); // queue of nodes we have to got to
-    // Queue visited = queue_create(); // queue of nodes we have been to
+    StackADT visited = stk_create();
     // Create the startpoint for the maze
-    int startpoint[] = {0,0};
-    queue_enqueue(next, create_traveler(startpoint, 2, NULL));
+    queue_enqueue(next, create_traveler(0, 2, NULL));
     
     // we want to exit this loop if there is nowhere left
     // to travel or we found the exit
@@ -165,21 +144,32 @@ int solve_maze(Maze maze) {
         curr = (Traveler*)queue_dequeue(next);
         // we only want to look at points that have not been
         // visited or are not walls
-        if(!maze->data[curr->to_visit[0]][curr->to_visit[1]]) {
-            if(curr->to_visit[0]+1 == maze->height && 
-                curr->to_visit[1]+1 == maze->width) {
-                maze->data[maze->height -1][maze->width -1]  = curr->distance;
+        if(!maze->data[curr->to_visit]) {
+            if(curr->to_visit == maze->height*maze->width - 1) {
+                maze->data[maze->width*maze->height - 1]  = curr->distance;
                 foundExit = 1;
             } else {
                 create_neighbors(next, maze, curr);
             }   
         }
-        free(curr);
+        //free(curr);
+        stk_push(visited, curr);
     }
-
+    
+    if(foundExit) {
+        do {
+            maze->data[curr->to_visit] = curr->distance;
+            curr = curr->prev;
+        } while(curr != NULL);
+    }
+    
+   while(!stk_empty(visited))
+       free(stk_pop(visited));
+    
     while(!queue_empty(next)) // clear all traversal structs
         free(queue_dequeue(next));
     queue_destroy(next);
+    stk_destroy(visited);
 
-    return maze->data[maze->height -1][maze->width -1] -1;  
+    return maze->data[maze->width*maze->height - 1] - 1;  
 }
