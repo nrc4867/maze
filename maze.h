@@ -22,7 +22,7 @@ typedef struct MAZE_ST* Maze;
  * args -
  *      input - input stream to get the maze from
  * returns
- *      a maze structure, if input empty then pointer to null
+ *      a pointer to a maze structure
  */
 Maze create_maze(FILE* input);
 
@@ -38,9 +38,7 @@ void pretty_print_maze(const Maze maze, FILE* output);
 /**
  * solve_maze()
  *      modifies the maze rows such that the 
- *      shortest path is marked with the steps 
- *      to get to that point from the exit
- *      and any dead ends are marked with -1
+ *      shortest path is marked with the steps to solve the maze.
  *
  *      the maze is modified such that future calls
  *      to pretty_print_maze() will print VALID_PATH
@@ -48,7 +46,8 @@ void pretty_print_maze(const Maze maze, FILE* output);
  * args - 
  *      maze - the maze to solve
  * returns -
- *      the distance to the shortest
+ *      the shorest path distance (min: 1),
+ *      or -1 if there is no solution
  */
 int solve_maze(Maze maze);
 

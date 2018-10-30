@@ -29,9 +29,11 @@ struct MAZE_ST {
 
 /**
  * create_maze()
- *
- *
- *
+ *      create a maze structure from input
+ * args - 
+ *      input - input stream to get the maze from
+ * returns - 
+ *      a pointer to a maze structure
  */
 Maze create_maze(FILE* input) {
     Maze maze = (Maze)malloc(sizeof(struct MAZE_ST));
@@ -61,20 +63,44 @@ Maze create_maze(FILE* input) {
     return maze;
 }
 
+
+/** 
+ * clean_maze()
+ *      free all memory allocated by the maze
+ * args -
+ *      maze - pointer to maze to free
+ */
 void clean_maze(Maze maze) {
     if(maze == NULL) return;
     free(maze->data);
     free(maze);
 }
 
-void print_horizontal_bound(FILE* output, int length) {
-    fprintf(output, "%c", BOUND_SIDE);
+/**
+ * print_horizontal_bound()
+ *      used for printing either the vertical or horizontal bound on the maze
+ * args -
+ *      output - output stream to print the maze to
+ *      length - the length of the bound
+ */
+static void print_horizontal_bound(FILE* output, int length) {
+    fprintf(output, "%c", BOUND_SIDE); // Leftmost bound char
     while(length-- > 0)
+    // need two bounds for each position in the maze
         fprintf(output, "%c%c", BOUND_TOP, BOUND_TOP);
+    // print the bound character following the last space in the
+    // maze followed by the rightmost bound char
     fprintf(output, "%c%c\n", BOUND_TOP, BOUND_SIDE);
     
 }
 
+/**
+ * pretty_print_maze()
+ *      prints the maze cleanly
+ * args-
+ *      maze -  pointer to maze structure to print
+ *      output - output stream to print the maze to
+ */
 void pretty_print_maze(const Maze maze, FILE* output) {
     print_horizontal_bound(output, maze->width);
     for(int row = 0; row < maze->height; row++) {
@@ -93,13 +119,23 @@ void pretty_print_maze(const Maze maze, FILE* output) {
     print_horizontal_bound(output, maze->width);
 }
 
-// Acting as backpointer
+/// represent traversing through the maze
 typedef struct MAZE_TRAVELER_ST {
-    int to_visit;
-    int distance;
-    struct MAZE_TRAVELER_ST* prev;
+    int to_visit; // the position on the map this traveler is assoicated with
+    int distance; // distance from to_vist to start
+    struct MAZE_TRAVELER_ST* prev; // the traveler that spawned this one
 } Traveler;
 
+/**
+ * create_traveler()
+ *      create a pointer to a traveler object 
+ * args -
+ *      to_visit - the space this traveler is associated with
+ *      distance - the distance from this poistion to the start
+ *      prev     - the traveler that spawned this one
+ * returns -
+ *      a pointer to a traveler 
+ */
 static Traveler* create_traveler(int to_visit, int distance, Traveler* prev) {
     Traveler* traveler = malloc(sizeof(Traveler));
     traveler->to_visit = to_visit;
@@ -108,6 +144,19 @@ static Traveler* create_traveler(int to_visit, int distance, Traveler* prev) {
     return traveler;
 }
 
+/**
+ * create_neighbors()
+ *      find an create travelers to visit valid spaces 
+ *      adjectent to the space on the maze that we are looking at.
+ *      A valid space is one that is in bounds and 
+ *      currently marked with a 0.
+ *      After the space is traveled to it is marked with the indicator -1
+ * args - 
+ *      next - a pointer to a queue that will decide what space we will travel
+ *             to next and iterate over
+ *      maze - a pointer to a maze to look at
+ *      curr - the current space that we have traveled to
+ */
 static void create_neighbors(Queue next,
                 Maze maze, Traveler* curr) {
     // mark this spot as -1 to signifiy that
@@ -130,6 +179,20 @@ static void create_neighbors(Queue next,
 
 }
 
+/**
+ * solve_maze()
+ *      modifies the maze rows such that the 
+ *      shortest path is marked with the steps to solve the maze.
+ *
+ *      the maze is modified such that future calls
+ *      to pretty_print_maze() will print VALID_PATH
+ *      on the path towards the exit
+ * args - 
+ *      maze - the maze to solve
+ * returns -
+ *      the shorest path distance (min: 1),
+ *      or -1 if there is no solution
+ */
 int solve_maze(Maze maze) {
     Queue next = queue_create(); // queue of nodes we have to got to
     StackADT visited = stk_create();
@@ -171,5 +234,5 @@ int solve_maze(Maze maze) {
     queue_destroy(next);
     stk_destroy(visited);
 
-    return maze->data[maze->width*maze->height - 1] - 1;  
+    return (foundExit)?maze->data[maze->width*maze->height - 1] - 1:-1;  
 }
