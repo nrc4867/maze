@@ -9,8 +9,11 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <math.h>
 #include "queueADT.h"
 #include "stackADT.h"
+#include "HeapADT.h"
+
 
 struct MAZE_ST {
     int* data;
@@ -138,12 +141,26 @@ void pretty_print_maze(const Maze maze, FILE* output) {
     print_horizontal_bound(output, maze->width);
 }
 
+static double distance(int x1, int y1, int x2, int y2) {
+    return sqrt(((x1 - x2) * (x1 - x2)) + ((y1 - y2) * (y1 - y2)));
+}
+
 /// represent traversing through the maze
 typedef struct MAZE_TRAVELER_ST {
     int to_visit; // the position on the map this traveler is assoicated with
-    int distance; // distance from to_vist to start
+    float distance; // distance from to_vist to start
     struct MAZE_TRAVELER_ST* prev; // the traveler that spawned this one
 } Traveler;
+
+void dumpTraveler(const void* item, FILE* outfp) {
+    fprintf(stdout, "dump\n");
+}
+
+int cmpTravelers(const void * lhs, const void* rhs) {
+    Traveler* t1 = (Traveler*)lhs;
+    Traveler* t2 = (Traveler*)rhs;
+    return t1->distance >= t2->distance;
+}
 
 /**
  * create_traveler()
@@ -155,7 +172,7 @@ typedef struct MAZE_TRAVELER_ST {
  * returns -
  *      a pointer to a traveler 
  */
-static Traveler* create_traveler(int to_visit, int distance, Traveler* prev) {
+static Traveler* create_traveler(int to_visit, double distance, Traveler* prev) {
     Traveler* traveler = malloc(sizeof(Traveler));
     traveler->to_visit = to_visit;
     traveler->distance = distance;
@@ -176,7 +193,7 @@ static Traveler* create_traveler(int to_visit, int distance, Traveler* prev) {
  *      maze - a pointer to a maze to look at
  *      curr - the current space that we have traveled to
  */
-static void create_neighbors(Queue next,
+static void create_neighbors(Heap next,
                 Maze maze, Traveler* curr) {
     // mark this spot as -1 to signifiy that
     // we have traveled to this point already
@@ -184,17 +201,17 @@ static void create_neighbors(Queue next,
     // enqueue sorrounding paths
     int index = curr->to_visit;
     if(ABOVE(index) >= 0 && !maze->data[ABOVE(index)])
-        queue_enqueue(next, 
-            create_traveler(ABOVE(index), curr->distance + 1, curr));
+        insertHeapItem(next, 
+            create_traveler(ABOVE(index), distance(ABOVE(index)%maze->width, (int)(ABOVE(index)/maze->width), maze->width, maze->height), curr));
     if(BELOW(index) >= 0 && !maze->data[BELOW(index)])
-        queue_enqueue(next, 
-            create_traveler(BELOW(index), curr->distance + 1, curr));
+        insertHeapItem(next, 
+            create_traveler(BELOW(index), distance(BELOW(index)%maze->width, (int)(BELOW(index)/maze->width), maze->width, maze->height), curr));
     if(LEFT(index) >= 0 && !maze->data[LEFT(index)])
-        queue_enqueue(next, 
-            create_traveler(LEFT(index), curr->distance + 1, curr));
+        insertHeapItem(next, 
+            create_traveler(LEFT(index), distance(LEFT(index)%maze->width, (int)(LEFT(index)/maze->width), maze->width, maze->height), curr));
     if(RIGHT(index) >= 0 && !maze->data[RIGHT(index)])
-        queue_enqueue(next, 
-            create_traveler(RIGHT(index), curr->distance + 1, curr));
+        insertHeapItem(next, 
+            create_traveler(RIGHT(index), distance(RIGHT(index)%maze->width, (int)(RIGHT(index)/maze->width), maze->width, maze->height), curr));
 
 }
 
@@ -213,17 +230,17 @@ static void create_neighbors(Queue next,
  *      or -1 if there is no solution
  */
 int solve_maze(Maze maze) {
-    Queue next = queue_create(); // queue of nodes we have to got to
+    Heap next = createHeap(10, cmpTravelers, dumpTraveler); // queue of nodes we have to got to
     StackADT visited = stk_create();
     // Create the startpoint for the maze
-    queue_enqueue(next, create_traveler(0, 2, NULL));
+    insertHeapItem(next, create_traveler(0, distance(0,0,maze->width, maze->height), NULL));
     
     // we want to exit this loop if there is nowhere left
     // to travel or we found the exit
     int foundExit = 0;
     Traveler* curr = NULL; 
-    while(!queue_empty(next) && !foundExit) {
-        curr = (Traveler*)queue_dequeue(next);
+    while(sizeHeap(next) && !foundExit) {
+        curr = (Traveler*)removeTopHeap(next);
         // we only want to look at points that have not been
         // visited or are not walls
         if(!maze->data[curr->to_visit]) {
@@ -239,8 +256,9 @@ int solve_maze(Maze maze) {
     }
     
     if(foundExit) {
+    int distance = 2;
         do {
-            maze->data[curr->to_visit] = curr->distance;
+            maze->data[curr->to_visit] = distance++;
             curr = curr->prev;
         } while(curr != NULL);
     }
@@ -248,10 +266,11 @@ int solve_maze(Maze maze) {
    while(!stk_empty(visited))
        free(stk_pop(visited));
     
-    while(!queue_empty(next)) // clear all traversal structs
-        free(queue_dequeue(next));
-    queue_destroy(next);
+    while(sizeHeap(next)) // clear all traversal structs
+        free(removeTopHeap(next));
+    destroyHeap(next);
     stk_destroy(visited);
 
-    return (foundExit)?maze->data[maze->width*maze->height - 1] - 1:-1;  
+    return (foundExit)?maze->data[0] - 1:-1;  
 }
+
